@@ -7,8 +7,9 @@ parameters:
     default: ""
 jobs:
   download_and_release:
-    machine:
-      image: ubuntu-2204:current # מעניק כ-100GB שטח דיסק
+    machine: true
+    resource_class: shl505/downloads
+      
     steps:
       - checkout
       
