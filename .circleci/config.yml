@@ -1,0 +1,61 @@
+# Use the latest 2.1 version of CircleCI pipeline process engine.
+# See: https://circleci.com/docs/reference/configuration-reference
+version: 2.1
+parameters:
+  magnet-link:
+    type: string
+    default: ""
+jobs:
+  download_and_release:
+    machine:
+      image: ubuntu-2204:current # מעניק כ-100GB שטח דיסק
+    steps:
+      - checkout
+      
+      - run:
+          name: "התקנת כלים נדרשים (aria2, p7zip, github-cli)"
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y aria2 p7zip-full curl
+            # התקנת GitHub CLI לצורך העלאה פשוטה ל-Releases
+            type -p curl >/dev/null || (sudo apt-get update && sudo apt-get install curl -y)
+            sudo mkdir -p -m 755 /etc/apt/keyrings
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/etc/apt/keyrings/githubcli-archive-keyring.gpg
+            sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt-get update
+            sudo apt-get install gh -y
+
+      - run:
+          name: "הורדת הקובץ באמצעות aria2"
+          command: |
+            mkdir -p download_dir
+            # החלף את המרכאות בקישור המגנט האמיתי שלך או השתמש במשתנה סביבה
+            # הוספנו הגדרות לחיבורים מרובים (--max-connection-per-server=16) למהירות מירבית
+            aria2c --dir=download_dir --max-connection-per-server=16 --split=16 "<< pipeline.parameters.magnet-link >>"
+
+      - run:
+          name: "כיווץ ופיצול הקבצים ל-7z בגודל 2GB"
+          command: |
+            mkdir -p output_parts
+            # יצירת ארכיון מפוצל של 2 ג'יגה-בייט (2048m)
+            # -v2048m קובע את גודל הפיצול
+            7z a -v2048m ./output_parts/archive.7z ./download_dir/*
+
+      - run:
+          name: "יצירת Release והעלאת הקבצים ל-GitHub"
+          command: |
+            # יצירת תג ייחודי מבוסס על מספר ה-Build של CircleCI
+            TAG="release-v${CIRCLE_BUILD_NUM}"
+            
+            echo "מתחבר ל-GitHub ומייצר Release..."
+            export GH_TOKEN=${GITHUB_TOKEN}
+            
+            # יצירת ה-Release ב-GitHub
+            gh release create "$TAG" ./output_parts/* --title "Automated Build #$CIRCLE_BUILD_NUM" --notes "קבצים שהורדו ופוצלו באופן אוטומטי."
+
+workflows:
+  version: 2
+  download_flow:
+    jobs:
+      - download_and_release
