@@ -1,0 +1,56 @@
+name: Minecraft TCP Proxy
+
+on:
+  workflow_dispatch:
+    inputs:
+
+      server_host:
+        description: "Minecraft server hostname/IP"
+        required: true
+        type: string
+
+      server_port:
+        description: "Minecraft server port"
+        required: true
+        default: "25565"
+        type: string
+
+      listen_port:
+        description: "Local listening port"
+        required: true
+        default: "25565"
+        type: string
+
+jobs:
+
+  proxy:
+
+    runs-on: 'windows-latest'
+
+    timeout-minutes: 360
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start Minecraft Proxy
+        shell: powershell
+        run: |
+          ipconfig
+          Write-Host "=========================================="
+          Write-Host " Starting Minecraft Proxy"
+          Write-Host "=========================================="
+
+          Write-Host "Target Host : ${{ inputs.server_host }}"
+          Write-Host "Target Port : ${{ inputs.server_port }}"
+          Write-Host "Listen Port : ${{ inputs.listen_port }}"
+
+          powershell.exe `
+            -NoProfile `
+            -ExecutionPolicy Bypass `
+            -File ".\proxy.ps1" `
+            -TargetHost "${{ inputs.server_host }}" `
+            -TargetPort ${{ inputs.server_port }} `
+            -ListenPort ${{ inputs.listen_port }}
+
