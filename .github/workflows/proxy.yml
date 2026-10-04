@@ -46,10 +46,7 @@ jobs:
           Write-Host "Target Port : ${{ inputs.server_port }}"
           Write-Host "Listen Port : ${{ inputs.listen_port }}"
 
-          powershell.exe `
-            -NoProfile `
-            -ExecutionPolicy Bypass `
-            -File ".\proxy.ps1" `
+          .\proxy.ps1 `
             -TargetHost "${{ inputs.server_host }}" `
             -TargetPort ${{ inputs.server_port }} `
             -ListenPort ${{ inputs.listen_port }}
